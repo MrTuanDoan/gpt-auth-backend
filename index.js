@@ -9,9 +9,17 @@ const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
+// ----- NEW PROXY ROUTE for Authorization -----
+app.get('/authorize', (req, res) => {
+    const auth0AuthorizeUrl = `https://${AUTH0_DOMAIN}/authorize`;
+    const redirectUrl = new URL(auth0AuthorizeUrl);
+    redirectUrl.search = new URLSearchParams(req.query).toString();
+    console.log(`Redirecting user to: ${redirectUrl.toString()}`);
+    res.redirect(302, redirectUrl.toString());
+});
+
 // This is the endpoint OpenAI will call to get the access token
 app.post('/token', async (req, res) => {
-    // ... (rest of the code is unchanged)
     console.log('Received token request:', req.body);
     try {
         const response = await axios.post(`https://${AUTH0_DOMAIN}/oauth/token`, {
@@ -32,7 +40,6 @@ app.post('/token', async (req, res) => {
 
 // This is your protected API endpoint that the GPT Action will call
 app.get('/api/get-user-data', (req, res) => {
-    // ... (rest of the code is unchanged)
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized: No token provided.' });
