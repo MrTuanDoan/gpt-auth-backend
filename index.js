@@ -9,6 +9,12 @@ const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
+// DANH SÁCH NGƯỜI DÙNG ĐƯỢC PHÉP (WHITELIST)
+const allowedUsers = [
+    'joequocdoan@gmail.com',
+    'yenientu@gmail.com',    
+];
+
 // ----- NEW PROXY ROUTE for Authorization -----
 app.get('/authorize', (req, res) => {
     const auth0AuthorizeUrl = `https://${AUTH0_DOMAIN}/authorize`;
@@ -38,17 +44,36 @@ app.post('/token', async (req, res) => {
     }
 });
 
-// This is your protected API endpoint that the GPT Action will call
-app.get('/api/get-user-data', (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized: No token provided.' });
+// ----- CẬP NHẬT PROTECTED API ENDPOINT VỚI LOGGING CHI TIẾT -----
+app.get('/api/get-user-data', checkJwt, (req, res) => {
+    // ---- BẮT ĐẦU GỠ LỖI ----
+    console.log("================ BẮT ĐẦU YÊU CẦU MỚI ================");
+    console.log("Toàn bộ nội dung payload của token:", JSON.stringify(req.auth.payload, null, 2));
+
+    const namespace = 'https://gpt-auth.com/';
+    const userEmail = req.auth.payload[namespace + 'email'];
+
+    console.log(`Giá trị của userEmail được trích xuất: ${userEmail}`);
+
+    if (!userEmail) {
+        console.log("LỖI: Không tìm thấy claim email trong token. Hãy kiểm tra lại Auth0 Action.");
+        return res.status(403).json({ error: 'Forbidden', message: 'Không tìm thấy thông tin email trong token.' });
     }
-    const token = authHeader.split(' ')[1];
-    console.log('Received valid token for protected route.');
+
+    console.log(`Đang kiểm tra email '${userEmail}' với danh sách whitelist: [${allowedUsers.join(', ')}]`);
+
+    // Kiểm tra xem email có trong whitelist không
+    if (!allowedUsers.includes(userEmail)) {
+        console.log(`QUYẾT ĐỊNH: TRUY CẬP BỊ TỪ CHỐI cho người dùng: ${userEmail}`);
+        console.log("================ KẾT THÚC YÊU CẦU ================\n");
+        return res.status(403).json({ error: 'Forbidden', message: 'Bạn không có quyền truy cập tài nguyên này.' });
+    }
+
+    console.log(`QUYẾT ĐỊNH: CẤP QUYỀN TRUY CẬP cho người dùng: ${userEmail}`);
+    console.log("================ KẾT THÚC YÊU CẦU ================\n");
     res.json({
-        message: "Hello, authenticated user!",
-        data: "This is secret data only you can see.",
+        message: `Chào mừng trở lại, ${userEmail}!`,
+        data: "Đây là dữ liệu bí mật chỉ người dùng được cấp phép mới thấy.",
         timestamp: new Date().toISOString()
     });
 });
