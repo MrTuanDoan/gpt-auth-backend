@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
+const { auth } = require('express-oauth2-jwt-bearer');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -9,24 +10,33 @@ const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
-// DANH SÁCH NGƯỜI DÙNG ĐƯỢC PHÉP (WHITELIST)
+// ----- DANH SÁCH NGƯỜI DÙNG ĐƯỢC PHÉP (WHITELIST) -----
 const allowedUsers = [
     'joequocdoan@gmail.com',
     'yenientu@gmail.com',    
 ];
 
-// ----- NEW PROXY ROUTE for Authorization -----
+// ----- Cấu hình Middleware xác thực JWT -----
+const checkJwt = auth({
+  audience: `https://${AUTH0_DOMAIN}/api/v2/`,
+  issuerBaseURL: `https://${AUTH0_DOMAIN}/`,
+  tokenSigningAlg: 'RS256'
+});
+
+// ----- PROXY ROUTE for Authorization -----
+// Route này chuyển hướng người dùng đến trang đăng nhập Auth0 để đáp ứng chính sách của OpenAI.
 app.get('/authorize', (req, res) => {
     const auth0AuthorizeUrl = `https://${AUTH0_DOMAIN}/authorize`;
     const redirectUrl = new URL(auth0AuthorizeUrl);
     redirectUrl.search = new URLSearchParams(req.query).toString();
-    console.log(`Redirecting user to: ${redirectUrl.toString()}`);
+    console.log(`Chuyển hướng người dùng đến: ${redirectUrl.toString()}`);
     res.redirect(302, redirectUrl.toString());
 });
 
-// This is the endpoint OpenAI will call to get the access token
+// ----- TOKEN ENDPOINT -----
+// Route này được server của OpenAI gọi để trao đổi authorization code lấy access token.
 app.post('/token', async (req, res) => {
-    console.log('Received token request:', req.body);
+    console.log('Đã nhận yêu cầu token:', req.body);
     try {
         const response = await axios.post(`https://${AUTH0_DOMAIN}/oauth/token`, {
             grant_type: 'authorization_code',
@@ -39,12 +49,13 @@ app.post('/token', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
-        console.error('Error exchanging token:', error.response ? error.response.data : error.message);
+        console.error('Lỗi khi trao đổi token:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Failed to exchange authorization code for token.' });
     }
 });
 
-// ----- CẬP NHẬT PROTECTED API ENDPOINT VỚI LOGGING CHI TIẾT -----
+// ----- PROTECTED API ENDPOINT VỚI LOGIC KIỂM TRA WHITELIST VÀ GỠ LỖI -----
+// Route này được GPT Action gọi sau khi người dùng đã đăng nhập thành công.
 app.get('/api/get-user-data', checkJwt, (req, res) => {
     // ---- BẮT ĐẦU GỠ LỖI ----
     console.log("================ BẮT ĐẦU YÊU CẦU MỚI ================");
