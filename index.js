@@ -18,18 +18,26 @@ const allowedUsers = [
 
 // ----- Cấu hình Middleware xác thực JWT -----
 const checkJwt = auth({
-  audience: `https://${AUTH0_DOMAIN}/api/v2/`,
+  audience: `https://${AUTH0_DOMAIN}/api/v2/`, // https://dev-4cakjw5yi0fvbsuv.us.auth0.com/api/v2/
   issuerBaseURL: `https://${AUTH0_DOMAIN}/`,
   tokenSigningAlg: 'RS256'
 });
 
-// ----- PROXY ROUTE for Authorization -----
-// Route này chuyển hướng người dùng đến trang đăng nhập Auth0 để đáp ứng chính sách của OpenAI.
+// PROXY ROUTE for Authorization - **UPDATED**
 app.get('/authorize', (req, res) => {
     const auth0AuthorizeUrl = `https://${AUTH0_DOMAIN}/authorize`;
+
+    // Lấy tất cả các tham số query từ OpenAI
+    const params = new URLSearchParams(req.query);
+
+    // THÊM THAM SỐ 'audience' MỘT CÁCH RÕ RÀNG
+    // Giá trị này PHẢI khớp với audience trong cấu hình checkJwt
+    params.set('audience', `https://${AUTH0_DOMAIN}/api/v2/`);
+
     const redirectUrl = new URL(auth0AuthorizeUrl);
-    redirectUrl.search = new URLSearchParams(req.query).toString();
-    console.log(`Chuyển hướng người dùng đến: ${redirectUrl.toString()}`);
+    redirectUrl.search = params.toString();
+
+    console.log(`(UPDATED) Redirecting user to: ${redirectUrl.toString()}`);
     res.redirect(302, redirectUrl.toString());
 });
 
