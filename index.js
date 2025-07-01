@@ -33,11 +33,12 @@ app.get('/authorize', (req, res) => {
     // THÊM THAM SỐ 'audience' MỘT CÁCH RÕ RÀNG
     // Giá trị này PHẢI khớp với audience trong cấu hình checkJwt
     params.set('audience', `https://${AUTH0_DOMAIN}/api/v2/`);
-
+    // Luôn buộc hiển thị màn hình đăng nhập để người dùng có thể đổi tài khoản
+    params.set('prompt', 'login'); 
     const redirectUrl = new URL(auth0AuthorizeUrl);
     redirectUrl.search = params.toString();
 
-    console.log(`(UPDATED) Redirecting user to: ${redirectUrl.toString()}`);
+    console.log(`(FORCING LOGIN) Redirecting user to: ${redirectUrl.toString()}`);
     res.redirect(302, redirectUrl.toString());
 });
 
@@ -85,7 +86,9 @@ app.get('/api/get-user-data', checkJwt, (req, res) => {
     if (!allowedUsers.includes(userEmail)) {
         console.log(`QUYẾT ĐỊNH: TRUY CẬP BỊ TỪ CHỐI cho người dùng: ${userEmail}`);
         console.log("================ KẾT THÚC YÊU CẦU ================\n");
-        return res.status(403).json({ error: 'Forbidden', message: 'Bạn không có quyền truy cập tài nguyên này.' });
+        // Thông báo mới, thân thiện và cung cấp hướng dẫn
+        const friendlyMessage = `Rất tiếc, tài khoản email "${userEmail}" chưa được cấp quyền truy cập. Vui lòng đăng nhập lại bằng một tài khoản đã được cấp phép, hoặc liên hệ quản trị viên để được hỗ trợ.`;
+        return res.status(403).json({ error: 'Forbidden', message: friendlyMessage });
     }
 
     console.log(`QUYẾT ĐỊNH: CẤP QUYỀN TRUY CẬP cho người dùng: ${userEmail}`);
