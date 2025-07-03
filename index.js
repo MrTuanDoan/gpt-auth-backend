@@ -14,6 +14,14 @@ const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 const allowedUsers = [
     'joequocdoan@gmail.com',
     'yenientu@gmail.com',    
+    'hoarichser@gmail.com',
+    'lyyamaha@gmail.com',
+    'mandyngoctran@gmail.com',
+    'vunguyenbuf@gmail.com',
+    'maituuyen7915@gmail.com', 
+    'lethia9293@gmail.com',
+    'huyenphamto2812@gmail.com', 
+    'ngminh08@gmail.com'
 ];
 
 // ----- Cấu hình Middleware xác thực JWT -----
